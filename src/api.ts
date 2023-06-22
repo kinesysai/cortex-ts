@@ -45,7 +45,7 @@ export class CortexAPI {
         }
     }
 
-    public getDocument(knowledgeName:string, documentID:string): AxiosPromise<Document> {
+    public getDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
