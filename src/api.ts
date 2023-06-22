@@ -20,7 +20,7 @@ export interface Document {
   source_url?: string | null;
 };
 
-const createRequestFunction = function (config: AxiosRequestConfig, endpoint: string , BASE_PATH: string) {
+const createRequestFunction = async function (config: AxiosRequestConfig, endpoint: string , BASE_PATH: string) {
     const axiosRequestArgs = {...config, url: BASE_PATH + endpoint};
     return axios.request(axiosRequestArgs);
 };
