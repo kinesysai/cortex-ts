@@ -28,7 +28,9 @@ export declare class CortexAPI {
     protected userId: string;
     protected basePath: string;
     constructor(apiKey?: string, userId?: string);
-    getDocument(knowledgeName: string, documentID: string): AxiosPromise<Document>;
+    getDocument(knowledgeName: string, documentID: string): AxiosPromise<{
+        document: Document;
+    }>;
     uploadDocument(): void;
     deleteDocument(): void;
 }
