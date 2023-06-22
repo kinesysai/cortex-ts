@@ -20,7 +20,28 @@ export interface Document {
   source_url?: string | null;
 };
 
-const createRequestFunction = async function (config: AxiosRequestConfig, endpoint: string , BASE_PATH: string) {
+export interface createDocument {
+  timestamp?: number;
+  tags?: string[];
+  text?: string | null;
+  source_url?: string | null;
+};
+
+export type SharedVisibility = "private" | "public" | "unlisted" | "deleted"
+
+export type HubProvider = "slack" | "notion" | "web" | "medium"
+
+export type Knowledge = {
+  name: string
+  description?: string
+  visibility: SharedVisibility
+  config?: string
+  runnerProjectId: string
+  lastUpdatedAt?: string
+  hub: { id: string; provider: HubProvider } | null
+}
+
+const createRequestFunction = function (config: AxiosRequestConfig, endpoint: string , BASE_PATH: string) {
     const axiosRequestArgs = {...config, url: BASE_PATH + endpoint};
     return axios.request(axiosRequestArgs);
 };
@@ -57,11 +78,28 @@ export class CortexAPI {
         return createRequestFunction(config, endpoint, this.basePath);
     }
 
-    public uploadDocument() {
-    
+    public uploadDocument(knowledgeName:string, documentID:string ,document: createDocument): AxiosPromise<{document:Document, knowledge: Knowledge}> {
+        const config = {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: document,
+          };
+        const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, endpoint, this.basePath);
     }
 
-    public deleteDocument() {
-    
+    public deleteDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
+        const config = {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            method: 'DELETE',
+          };
+        const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, endpoint, this.basePath);
     }
 };
