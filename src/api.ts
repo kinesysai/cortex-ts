@@ -78,6 +78,14 @@ export class CortexAPI {
         return createRequestFunction(config, endpoint, this.basePath);
     }
 
+    /**
+     * 
+     * @param knowledgeName 
+     * @param documentID 
+     * @param document 
+     * @throws {Error}
+     * @returns 
+     */
     public uploadDocument(knowledgeName:string, documentID:string ,document: createDocument): AxiosPromise<{document:Document, knowledge: Knowledge}> {
         const config = {
             headers: {
@@ -91,6 +99,13 @@ export class CortexAPI {
         return createRequestFunction(config, endpoint, this.basePath);
     }
 
+    /**
+     * 
+     * @param knowledgeName 
+     * @param documentID 
+     * @throws {Error}
+     * @returns 
+     */
     public deleteDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
         const config = {
             headers: {

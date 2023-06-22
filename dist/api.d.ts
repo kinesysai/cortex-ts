@@ -51,10 +51,25 @@ export declare class CortexAPI {
     getDocument(knowledgeName: string, documentID: string): AxiosPromise<{
         document: Document;
     }>;
+    /**
+     *
+     * @param knowledgeName
+     * @param documentID
+     * @param document
+     * @throws {Error}
+     * @returns
+     */
     uploadDocument(knowledgeName: string, documentID: string, document: createDocument): AxiosPromise<{
         document: Document;
         knowledge: Knowledge;
     }>;
+    /**
+     *
+     * @param knowledgeName
+     * @param documentID
+     * @throws {Error}
+     * @returns
+     */
     deleteDocument(knowledgeName: string, documentID: string): AxiosPromise<{
         document: Document;
     }>;

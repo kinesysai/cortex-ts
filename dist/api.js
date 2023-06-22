@@ -45,6 +45,14 @@ var CortexAPI = /** @class */ (function () {
         var endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
         return createRequestFunction(config, endpoint, this.basePath);
     };
+    /**
+     *
+     * @param knowledgeName
+     * @param documentID
+     * @param document
+     * @throws {Error}
+     * @returns
+     */
     CortexAPI.prototype.uploadDocument = function (knowledgeName, documentID, document) {
         var config = {
             headers: {
@@ -57,6 +65,13 @@ var CortexAPI = /** @class */ (function () {
         var endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
         return createRequestFunction(config, endpoint, this.basePath);
     };
+    /**
+     *
+     * @param knowledgeName
+     * @param documentID
+     * @throws {Error}
+     * @returns
+     */
     CortexAPI.prototype.deleteDocument = function (knowledgeName, documentID) {
         var config = {
             headers: {
