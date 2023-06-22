@@ -1,5 +1,80 @@
 import axios, { AxiosResponse, AxiosRequestConfig, AxiosPromise } from 'axios';
 
+export type BlockRunConfig = {
+    [key: string]: any
+  }
+
+export type BlockType =
+  | "input"
+  | "data"
+  | "knowledge"
+  | "code"
+  | "model"
+  | "chat"
+  | "map"
+  | "reduce"
+  | "loop"
+  | "until"
+  | "search"
+  | "curl"
+  | "browser"
+
+export type RunRunType = "deploy" | "local" | "execute" | "all"
+type Status = "running" | "succeeded" | "errored"
+
+export type RunConfig = {
+  blocks: BlockRunConfig
+}
+
+export type RunStatus = {
+  run: Status
+  blocks: BlockStatus[]
+}
+
+export type BlockStatus = {
+  block_type: BlockType
+  name: string
+  status: Status
+  success_count: number
+  error_count: number
+}
+
+export type TraceType = {
+  value?: any
+  error?: string
+}
+
+export type RunType = {
+  run_id: string
+  created: number
+  run_type: RunRunType
+  app_hash?: string | null
+  specification_hash?: string | null
+  config: RunConfig
+  status: RunStatus
+  traces: Array<[[BlockType, string], Array<Array<TraceType>>]>
+  // this is not from runner
+  version?: number
+  results?:
+    | {
+        value?: any | null
+        error?: string | null
+      }[][]
+    | null
+}
+
+export type ConfigType = {
+    [key: string]: any
+  }
+
+export interface CallableParams {
+    version: number | 'latest';
+    config: ConfigType;
+    inputs: Array<any>;
+    blocking?: boolean;
+    block_filter?: Array<any>;
+}
+
 export interface Document {
   data_source_id: string;
   created: number;
@@ -115,6 +190,32 @@ export class CortexAPI {
             method: 'DELETE',
           };
         const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, endpoint, this.basePath);
+    }
+    
+    public runCallable(callableID: string, data: CallableParams): AxiosPromise<{run: RunType}> {
+        const config = {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: data,
+          };
+        const endpoint = '/a/' + callableID + '/r';
+        return createRequestFunction(config, endpoint, this.basePath);
+    }
+
+    public runCallableWithStream(callableID: string, data: CallableParams): AxiosPromise {
+        const config = {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: {...data, stream: true},
+          };
+        const endpoint = '/a/' + callableID + '/r';
         return createRequestFunction(config, endpoint, this.basePath);
     }
 };

@@ -83,6 +83,30 @@ var CortexAPI = /** @class */ (function () {
         var endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
         return createRequestFunction(config, endpoint, this.basePath);
     };
+    CortexAPI.prototype.runCallable = function (callableID, data) {
+        var config = {
+            headers: {
+                'Authorization': "Bearer ".concat(this.apiKey),
+                'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: data,
+        };
+        var endpoint = '/a/' + callableID + '/r';
+        return createRequestFunction(config, endpoint, this.basePath);
+    };
+    CortexAPI.prototype.runCallableWithStream = function (callableID, data) {
+        var config = {
+            headers: {
+                'Authorization': "Bearer ".concat(this.apiKey),
+                'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: __assign(__assign({}, data), { stream: true }),
+        };
+        var endpoint = '/a/' + callableID + '/r';
+        return createRequestFunction(config, endpoint, this.basePath);
+    };
     return CortexAPI;
 }());
 exports.CortexAPI = CortexAPI;
