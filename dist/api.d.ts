@@ -18,6 +18,26 @@ export interface Document {
     text?: string | null;
     source_url?: string | null;
 }
+export interface createDocument {
+    timestamp?: number;
+    tags?: string[];
+    text?: string | null;
+    source_url?: string | null;
+}
+export type SharedVisibility = "private" | "public" | "unlisted" | "deleted";
+export type HubProvider = "slack" | "notion" | "web" | "medium";
+export type Knowledge = {
+    name: string;
+    description?: string;
+    visibility: SharedVisibility;
+    config?: string;
+    runnerProjectId: string;
+    lastUpdatedAt?: string;
+    hub: {
+        id: string;
+        provider: HubProvider;
+    } | null;
+};
 /**
  *
  * @export
@@ -31,6 +51,11 @@ export declare class CortexAPI {
     getDocument(knowledgeName: string, documentID: string): AxiosPromise<{
         document: Document;
     }>;
-    uploadDocument(): void;
-    deleteDocument(): void;
+    uploadDocument(knowledgeName: string, documentID: string, document: createDocument): AxiosPromise<{
+        document: Document;
+        knowledge: Knowledge;
+    }>;
+    deleteDocument(knowledgeName: string, documentID: string): AxiosPromise<{
+        document: Document;
+    }>;
 }
