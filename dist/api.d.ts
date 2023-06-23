@@ -24,7 +24,7 @@ export declare class Err<E> {
     isOk(): this is Ok<never>;
     isErr(): this is Err<E>;
 }
-export type RunnerAPIErrorResponse = {
+export type CortexAPIErrorResponse = {
     message: string;
     code: string;
 };
@@ -83,7 +83,7 @@ export type RunnerAppRunTokensEvent = {
         };
     };
 };
-export type RunnerAPIResponse<T> = Result<T, RunnerAPIErrorResponse>;
+export type CortexAPIResponse<T> = Result<T, CortexAPIErrorResponse>;
 export type Result<T, E> = Ok<T> | Err<E>;
 export type BlockRunConfig = {
     [key: string]: any;
@@ -218,7 +218,7 @@ export declare class CortexAPI {
     }>;
     runCallableWithStream(callableID: string, data: CallableParams): AxiosPromise;
     runChatCopilotStream(copilotID: string, data: ChatParams): Promise<Response>;
-    runChatCopilot(copilotID: string, data: ChatParams): Promise<RunnerAPIResponse<{
+    runChatCopilot(copilotID: string, data: ChatParams): Promise<CortexAPIResponse<{
         eventStream: AsyncGenerator<RunnerAppRunErrorEvent | RunnerAppRunRunStatusEvent | RunnerAppRunBlockStatusEvent | RunnerAppRunBlockExecutionEvent | RunnerAppRunTokensEvent | RunnerAppRunFinalEvent, void, unknown>;
         runnerRunId: Promise<string>;
     }>>;
@@ -235,7 +235,7 @@ export declare class CortexAPI {
         };
     };
     createChatParam(version: string, messages: Message[], input: string, projectID: string, knowledgeName: string): ChatParams;
-    runChatCompletion(version: string, messages: Message[], input: string, projectID: string, knowledgeName: string, copilotID: string): Promise<RunnerAPIResponse<{
+    runChatCompletion(version: string, messages: Message[], input: string, projectID: string, knowledgeName: string, copilotID: string): Promise<CortexAPIResponse<{
         messages: Message[];
         response: Message;
     }>>;

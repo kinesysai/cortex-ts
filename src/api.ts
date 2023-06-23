@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosRequestConfig, AxiosPromise, Axios } from 'axios';
+import axios, { AxiosRequestConfig, AxiosPromise } from 'axios';
 import { createParser } from 'eventsource-parser';
 
 export type Message = {
@@ -49,7 +49,7 @@ export class Err<E> {
   }
 }
 
-export type RunnerAPIErrorResponse = {
+export type CortexAPIErrorResponse = {
   message: string
   code: string
 }
@@ -112,7 +112,7 @@ export type RunnerAppRunTokensEvent = {
   }
 }
 
-export type RunnerAPIResponse<T> = Result<T, RunnerAPIErrorResponse>
+export type CortexAPIResponse<T> = Result<T, CortexAPIErrorResponse>
 
 
 export type Result<T, E> = Ok<T> | Err<E>
@@ -246,7 +246,7 @@ const createRequestFunction = function (config: AxiosRequestConfig, endpoint: st
 };
 
 async function processStreamedRunResponse(res: Response): Promise<
-  RunnerAPIResponse<{
+  CortexAPIResponse<{
     eventStream: AsyncGenerator<
       | RunnerAppRunErrorEvent
       | RunnerAppRunRunStatusEvent
@@ -510,7 +510,7 @@ export class CortexAPI {
     }
     
     public async runChatCopilot(copilotID: string, data: ChatParams): Promise<
-    RunnerAPIResponse<{
+    CortexAPIResponse<{
       eventStream: AsyncGenerator<
         | RunnerAppRunErrorEvent
         | RunnerAppRunRunStatusEvent
@@ -560,7 +560,7 @@ export class CortexAPI {
       return param;
     }
 
-    public async runChatCompletion(version: string, messages: Message[], input: string, projectID:string, knowledgeName: string, copilotID: string): Promise<RunnerAPIResponse<{messages:Message[],response:Message}>> {
+    public async runChatCompletion(version: string, messages: Message[], input: string, projectID:string, knowledgeName: string, copilotID: string): Promise<CortexAPIResponse<{messages:Message[],response:Message}>> {
       const mes = [... messages];
       const newInput: Message = {
         role: "user",
