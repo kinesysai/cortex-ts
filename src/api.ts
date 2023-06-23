@@ -162,7 +162,7 @@ export type ConfigType = {
   }
 
 export interface CallableParams {
-    version: number | 'latest';
+    version: number | string;
     config: ConfigType;
     inputs: Array<any>;
     blocking?: boolean;
@@ -170,7 +170,7 @@ export interface CallableParams {
 }
 
 export interface ChatParams {
-  version: number | 'latest';
+  version: number | string;
   config: ConfigType;
   inputs: Array<any>;
 }

@@ -115,14 +115,14 @@ export type ConfigType = {
     [key: string]: any;
 };
 export interface CallableParams {
-    version: number | 'latest';
+    version: number | string;
     config: ConfigType;
     inputs: Array<any>;
     blocking?: boolean;
     block_filter?: Array<any>;
 }
 export interface ChatParams {
-    version: number | 'latest';
+    version: number | string;
     config: ConfigType;
     inputs: Array<any>;
 }
