@@ -1,4 +1,77 @@
 import { AxiosPromise } from 'axios';
+export declare class Ok<T> {
+    value: T;
+    constructor(value: T);
+    isOk(): this is Ok<T>;
+    isErr(): this is Err<never>;
+}
+export declare class Err<E> {
+    error: E;
+    constructor(error: E);
+    isOk(): this is Ok<never>;
+    isErr(): this is Err<E>;
+}
+export type RunnerAPIErrorResponse = {
+    message: string;
+    code: string;
+};
+export type RunnerAppRunErrorEvent = {
+    type: "error";
+    content: {
+        code: string;
+        message: string;
+    };
+};
+export type RunnerAppRunRunStatusEvent = {
+    type: "run_status";
+    content: {
+        status: "running" | "succeeded" | "errored";
+        run_id: string;
+    };
+};
+export type RunnerAppRunBlockStatusEvent = {
+    type: "block_status";
+    content: {
+        block_type: string;
+        name: string;
+        status: "running" | "succeeded" | "errored";
+        success_count: number;
+        error_count: number;
+    };
+};
+export type RunnerAppRunBlockExecutionEvent = {
+    type: "block_execution";
+    content: {
+        block_type: string;
+        block_name: string;
+        execution: {
+            value: any | null;
+            error: string | null;
+        }[][];
+    };
+};
+export type RunnerAppRunFinalEvent = {
+    type: "final";
+};
+export type RunnerAppRunTokensEvent = {
+    type: "tokens";
+    content: {
+        block_type: string;
+        block_name: string;
+        input_index: number;
+        map: {
+            name: string;
+            iteration: number;
+        } | null;
+        tokens: {
+            text: string;
+            tokens?: string[];
+            logprobs?: number[];
+        };
+    };
+};
+export type RunnerAPIResponse<T> = Result<T, RunnerAPIErrorResponse>;
+export type Result<T, E> = Ok<T> | Err<E>;
 export type BlockRunConfig = {
     [key: string]: any;
 };
@@ -47,6 +120,11 @@ export interface CallableParams {
     inputs: Array<any>;
     blocking?: boolean;
     block_filter?: Array<any>;
+}
+export interface ChatParams {
+    version: number | 'latest';
+    config: ConfigType;
+    inputs: Array<any>;
 }
 export interface Document {
     data_source_id: string;
@@ -126,5 +204,10 @@ export declare class CortexAPI {
         run: RunType;
     }>;
     runCallableWithStream(callableID: string, data: CallableParams): AxiosPromise;
+    runChatCopilotStream(copilotID: string, data: ChatParams): Promise<Response>;
+    runChatCopilot(copilotID: string, data: ChatParams): Promise<RunnerAPIResponse<{
+        eventStream: AsyncGenerator<RunnerAppRunErrorEvent | RunnerAppRunRunStatusEvent | RunnerAppRunBlockStatusEvent | RunnerAppRunBlockExecutionEvent | RunnerAppRunTokensEvent | RunnerAppRunFinalEvent, void, unknown>;
+        runnerRunId: Promise<string>;
+    }>>;
 }
 export {};

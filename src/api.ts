@@ -1,4 +1,98 @@
-import axios, { AxiosResponse, AxiosRequestConfig, AxiosPromise } from 'axios';
+import axios, { AxiosResponse, AxiosRequestConfig, AxiosPromise, Axios } from 'axios';
+import { createParser } from 'eventsource-parser';
+
+export class Ok<T> {
+  constructor(public value: T) {}
+
+  isOk(): this is Ok<T> {
+    return true
+  }
+
+  isErr(): this is Err<never> {
+    return false
+  }
+}
+
+export class Err<E> {
+  constructor(public error: E) {}
+
+  isOk(): this is Ok<never> {
+    return false
+  }
+
+  isErr(): this is Err<E> {
+    return true
+  }
+}
+
+export type RunnerAPIErrorResponse = {
+  message: string
+  code: string
+}
+
+export type RunnerAppRunErrorEvent = {
+  type: "error"
+  content: {
+    code: string
+    message: string
+  }
+}
+
+export type RunnerAppRunRunStatusEvent = {
+  type: "run_status"
+  content: {
+    status: "running" | "succeeded" | "errored"
+    run_id: string
+  }
+}
+
+export type RunnerAppRunBlockStatusEvent = {
+  type: "block_status"
+  content: {
+    block_type: string
+    name: string
+    status: "running" | "succeeded" | "errored"
+    success_count: number
+    error_count: number
+  }
+}
+
+export type RunnerAppRunBlockExecutionEvent = {
+  type: "block_execution"
+  content: {
+    block_type: string
+    block_name: string
+    execution: { value: any | null; error: string | null }[][]
+  }
+}
+
+export type RunnerAppRunFinalEvent = {
+  type: "final"
+}
+
+export type RunnerAppRunTokensEvent = {
+  type: "tokens"
+  content: {
+    block_type: string
+    block_name: string
+    input_index: number
+    map: {
+      name: string
+      iteration: number
+    } | null
+    tokens: {
+      text: string
+      tokens?: string[]
+      logprobs?: number[]
+    }
+  }
+}
+
+export type RunnerAPIResponse<T> = Result<T, RunnerAPIErrorResponse>
+
+
+export type Result<T, E> = Ok<T> | Err<E>
+
 
 export type BlockRunConfig = {
     [key: string]: any
@@ -75,6 +169,12 @@ export interface CallableParams {
     block_filter?: Array<any>;
 }
 
+export interface ChatParams {
+  version: number | 'latest';
+  config: ConfigType;
+  inputs: Array<any>;
+}
+
 export interface Document {
   data_source_id: string;
   created: number;
@@ -120,6 +220,155 @@ const createRequestFunction = function (config: AxiosRequestConfig, endpoint: st
     const axiosRequestArgs = {...config, url: BASE_PATH + endpoint};
     return axios.request(axiosRequestArgs);
 };
+
+async function processStreamedRunResponse(res: Response): Promise<
+  RunnerAPIResponse<{
+    eventStream: AsyncGenerator<
+      | RunnerAppRunErrorEvent
+      | RunnerAppRunRunStatusEvent
+      | RunnerAppRunBlockStatusEvent
+      | RunnerAppRunBlockExecutionEvent
+      | RunnerAppRunTokensEvent
+      | RunnerAppRunFinalEvent,
+      void,
+      unknown
+    >
+    runnerRunId: Promise<string>
+  }>
+> {
+  if (!res.ok || !res.body) {
+    return new Err({
+      type: "runner_api_error",
+      code: "streamed_run_error",
+      message: `Error running streamed app: status_code=${res.status}`,
+    })
+  }
+
+  let hasRunId = false
+  let rejectRunIdPromise: (err: Error) => void
+  let resolveRunIdPromise: (runId: string) => void
+  const runnerRunIdPromise = new Promise<string>((resolve, reject) => {
+    rejectRunIdPromise = reject
+    resolveRunIdPromise = resolve
+  })
+
+  let pendingEvents: (
+    | RunnerAppRunErrorEvent
+    | RunnerAppRunRunStatusEvent
+    | RunnerAppRunBlockStatusEvent
+    | RunnerAppRunBlockExecutionEvent
+    | RunnerAppRunTokensEvent
+    | RunnerAppRunFinalEvent
+  )[] = []
+
+  const parser = createParser((event) => {
+    if (event.type === "event") {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data)
+
+          switch (data.type) {
+            case "error": {
+              pendingEvents.push({
+                type: "error",
+                content: {
+                  code: data.content.code,
+                  message: data.content.message,
+                },
+              } as RunnerAppRunErrorEvent)
+              break
+            }
+            case "run_status": {
+              pendingEvents.push({
+                type: data.type,
+                content: data.content,
+              })
+              break
+            }
+            case "block_status": {
+              pendingEvents.push({
+                type: data.type,
+                content: data.content,
+              })
+              break
+            }
+            case "block_execution": {
+              pendingEvents.push({
+                type: data.type,
+                content: data.content,
+              })
+              break
+            }
+            case "tokens": {
+              pendingEvents.push({
+                type: "tokens",
+                content: data.content,
+              } as RunnerAppRunTokensEvent)
+              break
+            }
+            case "final": {
+              pendingEvents.push({
+                type: "final",
+              } as RunnerAppRunFinalEvent)
+            }
+          }
+          if (data.content?.run_id && !hasRunId) {
+            hasRunId = true
+            resolveRunIdPromise(data.content.run_id)
+          }
+        } catch (err) {
+
+        }
+      }
+    }
+  })
+
+  const reader = res.body.getReader()
+
+  const streamEvents = async function* () {
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        parser.feed(new TextDecoder().decode(value))
+        for (const event of pendingEvents) {
+          yield event
+        }
+        pendingEvents = []
+      }
+      if (!hasRunId) {
+        // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+        /* setImmediate(() => {
+          //logger.error("No run id received.")
+          rejectRunIdPromise(new Error("No run id received"))
+        }) */
+      }
+    } catch (e) {
+      yield {
+        type: "error",
+        content: {
+          code: "stream_error",
+          message: "Error streaming chunks",
+        },
+      } as RunnerAppRunErrorEvent
+      /* logger.error(
+        {
+          error: e,
+        },
+        "Error streaming chunks."
+      ) */
+    } finally {
+      reader.releaseLock()
+    }
+  }
+
+  return new Ok({
+    eventStream: streamEvents(),
+    runnerRunId: runnerRunIdPromise,
+  })
+}
 
 /**
  *
@@ -217,5 +466,41 @@ export class CortexAPI {
           };
         const endpoint = '/a/' + callableID + '/r';
         return createRequestFunction(config, endpoint, this.basePath);
+    }
+
+    
+
+    public runChatCopilotStream(copilotID: string, data: ChatParams): Promise<Response>
+    {
+      const endpoint = '/copilot/' + copilotID;
+      const base = 'https://trycortex.ai/api/sdk'
+      /* const res = createRequestFunction(config, endpoint, base); */
+      const res = fetch(base+endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return res;
+    }
+    
+    public async runChatCopilot(copilotID: string, data: ChatParams): Promise<
+    RunnerAPIResponse<{
+      eventStream: AsyncGenerator<
+        | RunnerAppRunErrorEvent
+        | RunnerAppRunRunStatusEvent
+        | RunnerAppRunBlockStatusEvent
+        | RunnerAppRunBlockExecutionEvent
+        | RunnerAppRunTokensEvent
+        | RunnerAppRunFinalEvent,
+        void,
+        unknown
+      >
+      runnerRunId: Promise<string>
+    }>>
+    {
+      const res: Response = await this.runChatCopilotStream(copilotID, data);
+      return processStreamedRunResponse(res);
     }
 };
