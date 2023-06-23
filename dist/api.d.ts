@@ -1,4 +1,17 @@
 import { AxiosPromise } from 'axios';
+export type Message = {
+    role: "user" | "assistant" | "error";
+    content: string;
+    retrievals: RetrievedDocument[] | null;
+    updatedAt?: Date;
+};
+export type RetrievedDocument = {
+    source_url: string;
+    document_id: string;
+    chunks: {
+        text: string;
+    }[];
+};
 export declare class Ok<T> {
     value: T;
     constructor(value: T);
@@ -208,6 +221,23 @@ export declare class CortexAPI {
     runChatCopilot(copilotID: string, data: ChatParams): Promise<RunnerAPIResponse<{
         eventStream: AsyncGenerator<RunnerAppRunErrorEvent | RunnerAppRunRunStatusEvent | RunnerAppRunBlockStatusEvent | RunnerAppRunBlockExecutionEvent | RunnerAppRunTokensEvent | RunnerAppRunFinalEvent, void, unknown>;
         runnerRunId: Promise<string>;
+    }>>;
+    createChatInput(messages: Message[], input: string): Array<any>;
+    createChatConfig(projectID: string, knowledgeName: string): {
+        OUTPUT_STREAM: {
+            use_stream: boolean;
+        };
+        RETRIEVALS: {
+            knowledge: {
+                project_id: string;
+                data_source_id: string;
+            }[];
+        };
+    };
+    createChatParam(version: string, messages: Message[], input: string, projectID: string, knowledgeName: string): ChatParams;
+    runChatCompletion(version: string, messages: Message[], input: string, projectID: string, knowledgeName: string, copilotID: string): Promise<RunnerAPIResponse<{
+        messages: Message[];
+        response: Message;
     }>>;
 }
 export {};

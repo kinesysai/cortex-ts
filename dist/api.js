@@ -261,6 +261,104 @@ class CortexAPI {
         const res = await this.runChatCopilotStream(copilotID, data);
         return processStreamedRunResponse(res);
     }
+    createChatInput(messages, input) {
+        const mes = [...messages];
+        const newInput = {
+            role: "user",
+            content: input,
+            retrievals: [],
+            updatedAt: new Date(),
+        };
+        mes.push(newInput);
+        return [{ messages: mes },];
+    }
+    createChatConfig(projectID, knowledgeName) {
+        const config = {
+            "OUTPUT_STREAM": { "use_stream": true },
+            "RETRIEVALS": { "knowledge": [{ "project_id": projectID, "data_source_id": knowledgeName }] }
+        };
+        return config;
+    }
+    createChatParam(version, messages, input, projectID, knowledgeName) {
+        const config = this.createChatConfig(projectID, knowledgeName);
+        const inputMessages = this.createChatInput(messages, input);
+        const param = {
+            version: version,
+            config: config,
+            inputs: inputMessages,
+        };
+        return param;
+    }
+    async runChatCompletion(version, messages, input, projectID, knowledgeName, copilotID) {
+        const mes = [...messages];
+        const newInput = {
+            role: "user",
+            content: input,
+            retrievals: [],
+            updatedAt: new Date(),
+        };
+        mes.push(newInput);
+        const param = this.createChatParam(version, messages, input, projectID, knowledgeName);
+        const res = await this.runChatCopilot(copilotID, param);
+        if (res.isErr()) {
+            return new Err({
+                type: "api_error",
+                code: "runChatCopilot",
+                message: `Error running runChatCopilot: ${res.error.message}`,
+            });
+        }
+        const response = {
+            role: "assistant",
+            content: "",
+            retrievals: null,
+            updatedAt: new Date(),
+        };
+        const { eventStream } = res.value;
+        for await (const event of eventStream) {
+            //console.log("EVENT", event)
+            if (event.type === "tokens") {
+                // console.log("EVENT", event);
+                const content = response.content + event.content.tokens.text;
+                response.content = content;
+            }
+            if (event.type === "error") {
+                return new Err({
+                    type: "eventStream_error",
+                    code: "runChatCompletion",
+                    message: `Error running event: ERROR event ${event}`,
+                });
+            }
+            if (event.type === "run_status") {
+                if (event.content.status === "errored") {
+                    //console.log("RUN STATUS", event)
+                    break;
+                }
+            }
+            if (event.type === "block_execution") {
+                const e = event.content.execution[0][0];
+                if (event.content.block_name === 'RETRIEVALS') {
+                    if (!e.error) {
+                        response.retrievals = e.value;
+                    }
+                }
+                if (event.content.block_name === "OUTPUT_STREAM") {
+                    if (e.error) {
+                        return new Err({
+                            type: "eventStream_error",
+                            code: "runChatCompletion",
+                            message: `MODEL event with error: ERROR event ${event}`,
+                        });
+                    }
+                }
+                if (event.content.block_name === "OUTPUT") {
+                    if (!e.error) {
+                        mes.push(e.value);
+                    }
+                }
+            }
+        }
+        return new Ok({ messages: mes, response: response });
+    }
 }
 exports.CortexAPI = CortexAPI;
 ;

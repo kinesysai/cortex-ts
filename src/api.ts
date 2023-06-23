@@ -1,6 +1,30 @@
 import axios, { AxiosResponse, AxiosRequestConfig, AxiosPromise, Axios } from 'axios';
 import { createParser } from 'eventsource-parser';
 
+export type Message = {
+  role: "user" | "assistant" | "error"
+  content: string
+  retrievals: RetrievedDocument[] | null
+  updatedAt?: Date
+}
+export type RetrievedDocument = {
+  source_url: string
+  document_id: string
+  // provider: HubProvider;
+  // score: number;
+  chunks: {
+    // channelName?: string;
+    // timestamp: string;
+    // title?: string;
+    // lastEditedAt?: string;
+    // chunks: {
+    //   text: string;
+    //   offset: number;
+    text: string
+  }[]
+  // };
+}
+
 export class Ok<T> {
   constructor(public value: T) {}
 
@@ -502,5 +526,111 @@ export class CortexAPI {
     {
       const res: Response = await this.runChatCopilotStream(copilotID, data);
       return processStreamedRunResponse(res);
+    }
+
+    public createChatInput(messages: Message[], input: string): Array<any> {
+      const mes = [... messages];
+      const newInput: Message = {
+        role: "user",
+        content: input,
+        retrievals: [],
+        updatedAt: new Date(),
+      }
+      mes.push(newInput);
+      return [{ messages: mes },]
+    }
+
+    public createChatConfig(projectID:string, knowledgeName: string) {
+      const config = 
+      {
+        "OUTPUT_STREAM":{"use_stream":true},
+        "RETRIEVALS":{"knowledge":[{"project_id":projectID,"data_source_id":knowledgeName}]}
+      }
+      return config;
+    }
+    
+    public createChatParam(version: string, messages: Message[], input: string, projectID:string, knowledgeName: string): ChatParams {
+      const config = this.createChatConfig(projectID, knowledgeName);
+      const inputMessages = this.createChatInput(messages, input);
+      const param = {
+        version: version,
+        config: config,
+        inputs: inputMessages,
+      }
+      return param;
+    }
+
+    public async runChatCompletion(version: string, messages: Message[], input: string, projectID:string, knowledgeName: string, copilotID: string): Promise<RunnerAPIResponse<{messages:Message[],response:Message}>> {
+      const mes = [... messages];
+      const newInput: Message = {
+        role: "user",
+        content: input,
+        retrievals: [],
+        updatedAt: new Date(),
+      }
+      mes.push(newInput);
+      const param = this.createChatParam(version, messages, input, projectID, knowledgeName);
+      const res = await this.runChatCopilot(copilotID, param);
+      if (res.isErr()) {
+        return new Err({
+          type: "api_error",
+          code: "runChatCopilot",
+          message: `Error running runChatCopilot: ${res.error.message}`,
+        })
+      }
+      const response: Message = {
+        role: "assistant",
+        content: "",
+        retrievals: null,
+        updatedAt: new Date(),
+      }
+
+      const { eventStream } = res.value
+      for await (const event of eventStream) {
+        //console.log("EVENT", event)
+        if (event.type === "tokens") {
+          // console.log("EVENT", event);
+          const content = response.content + event.content.tokens.text
+          response.content = content
+        }
+        if (event.type === "error") {
+          return new Err({
+            type: "eventStream_error",
+            code: "runChatCompletion",
+            message: `Error running event: ERROR event ${event}`,
+          })
+        }
+        if (event.type === "run_status") {
+          if (event.content.status === "errored") {
+            //console.log("RUN STATUS", event)
+            break
+          }
+        }
+
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0]
+          if (event.content.block_name === 'RETRIEVALS') {
+            if (!e.error) {
+              response.retrievals = e.value
+            }
+          }
+          if (event.content.block_name === "OUTPUT_STREAM") {
+            if (e.error) {
+              return new Err({
+                type: "eventStream_error",
+                code: "runChatCompletion",
+                message: `MODEL event with error: ERROR event ${event}`,
+              })
+            }
+          }
+          if (event.content.block_name === "OUTPUT") {
+            if (!e.error) {
+              mes.push(e.value)
+            }
+          }
+        }
+      }
+
+      return new Ok({messages: mes, response: response});
     }
 };
