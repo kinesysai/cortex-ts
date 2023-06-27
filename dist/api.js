@@ -29,6 +29,13 @@ class Err {
 exports.Err = Err;
 ;
 ;
+/**
+ * function to make requests to cortex
+ * @param config config for axios
+ * @param endpoint endpoint to make request to
+ * @param BASE_PATH base path for the request
+ * @returns {Promise<AxiosResponse<any>>} response from the request
+ */
 const createRequestFunction = function (config, endpoint, BASE_PATH) {
     const axiosRequestArgs = { ...config, url: BASE_PATH + endpoint };
     return axios_1.default.request(axiosRequestArgs);
@@ -157,9 +164,9 @@ async function processStreamedRunResponse(res) {
     });
 }
 /**
- *
- * @export
- * @class BaseAPI
+ * Collection of Cortex API endpoints
+ * @export CortexAPI
+ * @class CortexAPI
  */
 class CortexAPI {
     constructor(apiKey, userId) {
@@ -171,6 +178,12 @@ class CortexAPI {
             this.basePath = 'https://trycortex.ai/api/sdk/p/' + userId;
         }
     }
+    /**
+     * Retrieves the details of an existing document. You need only supply the unique knowledge name and document name.
+     * @param knowledgeName name of knowledge
+     * @param documentID name of document
+     * @returns Promise of document object
+     */
     getDocument(knowledgeName, documentID) {
         const config = {
             headers: {
@@ -183,12 +196,12 @@ class CortexAPI {
         return createRequestFunction(config, endpoint, this.basePath);
     }
     /**
+     * Upload a document to a knowledge
      *
-     * @param knowledgeName
-     * @param documentID
-     * @param document
-     * @throws {Error}
-     * @returns
+     * @param knowledgeName name of knowledge
+     * @param documentID name of document to be created
+     * @param document document object to be uploaded
+     * @returns Promise of document object and knowledge object
      */
     uploadDocument(knowledgeName, documentID, document) {
         const config = {
@@ -203,11 +216,11 @@ class CortexAPI {
         return createRequestFunction(config, endpoint, this.basePath);
     }
     /**
+     * delete a document from a knowledge
      *
-     * @param knowledgeName
-     * @param documentID
-     * @throws {Error}
-     * @returns
+     * @param knowledgeName name of knowledge
+     * @param documentID name of document to be deleted
+     * @returns Promise of document object
      */
     deleteDocument(knowledgeName, documentID) {
         const config = {
@@ -220,6 +233,13 @@ class CortexAPI {
         const endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
         return createRequestFunction(config, endpoint, this.basePath);
     }
+    /**
+     * runCallable runs a callable with the given data
+     *
+     * @param callableID id of callable
+     * @param data data to be passed to callable
+     * @returns Promise of run object
+     */
     runCallable(callableID, data) {
         const config = {
             headers: {
@@ -232,6 +252,13 @@ class CortexAPI {
         const endpoint = '/a/' + callableID + '/r';
         return createRequestFunction(config, endpoint, this.basePath);
     }
+    /**
+     * runCallableWithStream runs a callable with the given data and returns a stream of events
+     *
+     * @param callableID id of callable
+     * @param data data to be passed to callable
+     * @returns Promise of run object
+     */
     runCallableWithStream(callableID, data) {
         const config = {
             headers: {
@@ -244,6 +271,15 @@ class CortexAPI {
         const endpoint = '/a/' + callableID + '/r';
         return createRequestFunction(config, endpoint, this.basePath);
     }
+    /**
+     * Specifically runs a chat copilot with a callable of the chat template
+     *
+     * called by runChatCopilot
+     *
+     * @param copilotID id of chat copilot
+     * @param data data to be passed to chat copilot
+     * @returns Promise of Response object
+     */
     runChatCopilotStream(copilotID, data) {
         const endpoint = '/copilot/' + copilotID;
         const base = 'https://trycortex.ai/api/sdk';
@@ -257,10 +293,26 @@ class CortexAPI {
         });
         return res;
     }
+    /**
+     * runChatCopilot runs a chat copilot with the given data and returns a stream of events
+     *
+     * called by runChatCompletion
+     *
+     * @param copilotID id of chat copilot
+     * @param data data to be passed to chat copilot
+     * @returns Promise of an event stream and runner run id
+     */
     async runChatCopilot(copilotID, data) {
         const res = await this.runChatCopilotStream(copilotID, data);
         return processStreamedRunResponse(res);
     }
+    /**
+     * Creates the input for the chat copilot
+     *
+     * @param messages array of messages
+     * @param input new input to be added to messages
+     * @returns Array of message objects
+     */
     createChatInput(messages, input) {
         const mes = [...messages];
         const newInput = {
@@ -272,6 +324,12 @@ class CortexAPI {
         mes.push(newInput);
         return [{ messages: mes },];
     }
+    /**
+     * Create the config for the chat copilot
+     * @param projectID projectID of knowledge being used
+     * @param knowledgeName name of knowledge being used
+     * @returns config object
+     */
     createChatConfig(projectID, knowledgeName) {
         const config = {
             "OUTPUT_STREAM": { "use_stream": true },
@@ -279,6 +337,16 @@ class CortexAPI {
         };
         return config;
     }
+    /**
+     * Creates the param for the chat copilot
+     *
+     * @param version the version of callable desired to run
+     * @param messages array of previously send and recieved messages
+     * @param input the chat to be processed
+     * @param projectID projectID of knowledge being used
+     * @param knowledgeName name of knowledge being used
+     * @returns chat param object
+     */
     createChatParam(version, messages, input, projectID, knowledgeName) {
         const config = this.createChatConfig(projectID, knowledgeName);
         const inputMessages = this.createChatInput(messages, input);
@@ -289,6 +357,17 @@ class CortexAPI {
         };
         return param;
     }
+    /**
+     * Takes in an array of previous messages and a new chat to be sent to the callable and returns the response
+     *
+     * @param version the version of callable desired to run
+     * @param messages array of previously send and recieved messages
+     * @param input the chat to be processed
+     * @param projectID projectID of knowledge being used
+     * @param knowledgeName name of knowledge being used
+     * @param copilotID id of chat copilot
+     * @returns Promise of CortexAPIResponse with the response message and the array of messages with the response added
+     */
     async runChatCompletion(version, messages, input, projectID, knowledgeName, copilotID) {
         const mes = [...messages];
         const newInput = {

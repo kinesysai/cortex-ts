@@ -1,1 +1,1 @@
-export {CortexAPI, Document} from './api'
+export * from './api'
