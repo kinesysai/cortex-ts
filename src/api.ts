@@ -408,6 +408,20 @@ export class CortexAPI {
             this.userId = userId;
             this.basePath = 'https://trycortex.ai/api/sdk/p/'+ userId;
         }
+        else {
+          const config = {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            data: document,
+          };
+          const endpoint = 'https://trycortex.ai/api/sdk/q/p'
+          const uID = createRequestFunction(config, endpoint, '').then((res) => {
+            this.userId = res.data.id;
+          }).catch((err) => {console.log(err)});
+        }
     }
 
     /**
