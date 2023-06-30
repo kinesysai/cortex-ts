@@ -418,8 +418,8 @@ export class CortexAPI {
           };
           const endpoint = 'https://trycortex.ai/api/sdk/q/p'
           const uID = createRequestFunction(config, endpoint, '').then((res) => {
-            this.userId = res.data.id;
-          }).catch((err) => {console.log(err)});
+            this.userId = res.data.pID;
+          }).catch((err) => {console.log("Error: " + err + "\n Please check your API key and try again.")});
         }
     }
 
