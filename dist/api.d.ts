@@ -185,9 +185,10 @@ export type Knowledge = {
  */
 export declare class CortexAPI {
     protected apiKey: string;
-    protected userId: string;
+    protected userId: string | null;
     protected basePath: string;
     constructor(apiKey?: string, userId?: string);
+    getIDFromKey(): Promise<string>;
     /**
      * Retrieves the details of an existing document. You need only supply the unique knowledge name and document name.
      * @param knowledgeName name of knowledge

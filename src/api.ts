@@ -236,8 +236,8 @@ export type Knowledge = {
  * @param BASE_PATH base path for the request
  * @returns {Promise<AxiosResponse<any>>} response from the request
  */
-const createRequestFunction = function (config: AxiosRequestConfig, endpoint: string , BASE_PATH: string) {
-    const axiosRequestArgs = {...config, url: BASE_PATH + endpoint};
+const createRequestFunction = function (config: AxiosRequestConfig, endpoint: string) {
+    const axiosRequestArgs = {...config, url: endpoint};
     return axios.request(axiosRequestArgs);
 };
 
@@ -397,8 +397,8 @@ async function processStreamedRunResponse(res: Response): Promise<
  */
 export class CortexAPI {
     protected apiKey: string;
-    protected userId: string;
-    protected basePath: string;
+    protected userId: string | null;
+    protected basePath = 'https://trycortex.ai/api/sdk/p';
 
     constructor(apiKey?: string, userId?: string) {
         if (apiKey) {
@@ -406,21 +406,22 @@ export class CortexAPI {
         }
         if (userId) {
             this.userId = userId;
-            this.basePath = 'https://trycortex.ai/api/sdk/p/'+ userId;
         }
         else {
-          const config = {
-            headers: {
-              'Authorization': `Bearer ${this.apiKey}`,
-              'Content-Type': 'application/json'
-            },
-            method: 'GET',
-          };
-          const endpoint = 'https://trycortex.ai/api/sdk/q/p'
-          const uID = createRequestFunction(config, endpoint, '').then((res) => {
-            this.userId = res.data.pID;
-          }).catch((err) => {console.log("Error: " + err + "\n Please check your API key and try again.")});
+          this.userId = null;
         }
+    }
+    public async getIDFromKey() : Promise<string> {
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        method: 'GET',
+      };
+      const endpoint = 'https://trycortex.ai/api/sdk/q/p'
+      const res = await createRequestFunction(config, endpoint);
+      return res.data.pID;
     }
 
     /**
@@ -429,7 +430,10 @@ export class CortexAPI {
      * @param documentID name of document
      * @returns Promise of document object
      */
-    public getDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
+    public async getDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
+        if (!this.userId) {
+          this.userId = await this.getIDFromKey();
+        }
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
@@ -437,8 +441,8 @@ export class CortexAPI {
             },
             method: 'GET',
           };
-        const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
 
     /**
@@ -449,7 +453,10 @@ export class CortexAPI {
      * @param document document object to be uploaded
      * @returns Promise of document object and knowledge object
      */
-    public uploadDocument(knowledgeName:string, documentID:string ,document: createDocument): AxiosPromise<{document:Document, knowledge: Knowledge}> {
+    public async uploadDocument(knowledgeName:string, documentID:string ,document: createDocument): AxiosPromise<{document:Document, knowledge: Knowledge}> {
+      if (!this.userId) {
+        this.userId = await this.getIDFromKey();
+      }
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
@@ -458,8 +465,8 @@ export class CortexAPI {
             method: 'POST',
             data: document,
           };
-        const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId +  '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
 
     /**
@@ -469,7 +476,10 @@ export class CortexAPI {
      * @param documentID name of document to be deleted
      * @returns Promise of document object
      */
-    public deleteDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
+    public async deleteDocument(knowledgeName:string, documentID:string): AxiosPromise<{document:Document}> {
+      if (!this.userId) {
+        this.userId = await this.getIDFromKey();
+      }
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
@@ -477,8 +487,8 @@ export class CortexAPI {
             },
             method: 'DELETE',
           };
-        const endpoint = '/knowledge/'+ knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/knowledge/'+ knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     
     /**
@@ -488,7 +498,10 @@ export class CortexAPI {
      * @param data data to be passed to callable
      * @returns Promise of run object
      */
-    public runCallable(callableID: string, data: CallableParams): AxiosPromise<{run: RunType}> {
+    public async runCallable(callableID: string, data: CallableParams): AxiosPromise<{run: RunType}> {
+      if (!this.userId) {
+        this.userId = await this.getIDFromKey();
+      }
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
@@ -497,8 +510,8 @@ export class CortexAPI {
             method: 'POST',
             data: data,
           };
-        const endpoint = '/a/' + callableID + '/r';
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/a/' + callableID + '/r';
+        return createRequestFunction(config, this.basePath + endpoint);
     }
 
     /**
@@ -508,7 +521,10 @@ export class CortexAPI {
      * @param data data to be passed to callable
      * @returns Promise of run object
      */
-    public runCallableWithStream(callableID: string, data: CallableParams): AxiosPromise {
+    public async runCallableWithStream(callableID: string, data: CallableParams): AxiosPromise {
+      if (!this.userId) {
+        this.userId = await this.getIDFromKey();
+      }
         const config = {
             headers: {
               'Authorization': `Bearer ${this.apiKey}`,
@@ -517,8 +533,8 @@ export class CortexAPI {
             method: 'POST',
             data: {...data, stream: true},
           };
-        const endpoint = '/a/' + callableID + '/r';
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/a/' + callableID + '/r';
+        return createRequestFunction(config, this.basePath + endpoint);
     }
 
     /**

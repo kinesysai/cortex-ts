@@ -36,8 +36,8 @@ exports.Err = Err;
  * @param BASE_PATH base path for the request
  * @returns {Promise<AxiosResponse<any>>} response from the request
  */
-const createRequestFunction = function (config, endpoint, BASE_PATH) {
-    const axiosRequestArgs = { ...config, url: BASE_PATH + endpoint };
+const createRequestFunction = function (config, endpoint) {
+    const axiosRequestArgs = { ...config, url: endpoint };
     return axios_1.default.request(axiosRequestArgs);
 };
 async function processStreamedRunResponse(res) {
@@ -170,34 +170,18 @@ async function processStreamedRunResponse(res) {
  */
 class CortexAPI {
     constructor(apiKey, userId) {
+        this.basePath = 'https://trycortex.ai/api/sdk/p';
         if (apiKey) {
             this.apiKey = apiKey;
         }
         if (userId) {
             this.userId = userId;
-            this.basePath = 'https://trycortex.ai/api/sdk/p/' + userId;
         }
         else {
-            const config = {
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                method: 'GET',
-            };
-            const endpoint = 'https://trycortex.ai/api/sdk/q/p';
-            const uID = createRequestFunction(config, endpoint, '').then((res) => {
-                this.userId = res.data.pID;
-            }).catch((err) => { console.log("Error: " + err + "\n Please check your API key and try again."); });
+            this.userId = null;
         }
     }
-    /**
-     * Retrieves the details of an existing document. You need only supply the unique knowledge name and document name.
-     * @param knowledgeName name of knowledge
-     * @param documentID name of document
-     * @returns Promise of document object
-     */
-    getDocument(knowledgeName, documentID) {
+    async getIDFromKey() {
         const config = {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -205,8 +189,29 @@ class CortexAPI {
             },
             method: 'GET',
         };
-        const endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = 'https://trycortex.ai/api/sdk/q/p';
+        const res = await createRequestFunction(config, endpoint);
+        return res.data.pID;
+    }
+    /**
+     * Retrieves the details of an existing document. You need only supply the unique knowledge name and document name.
+     * @param knowledgeName name of knowledge
+     * @param documentID name of document
+     * @returns Promise of document object
+     */
+    async getDocument(knowledgeName, documentID) {
+        if (!this.userId) {
+            this.userId = await this.getIDFromKey();
+        }
+        const config = {
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            method: 'GET',
+        };
+        const endpoint = '/' + this.userId + '/knowledge/' + knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     /**
      * Upload a document to a knowledge
@@ -216,7 +221,10 @@ class CortexAPI {
      * @param document document object to be uploaded
      * @returns Promise of document object and knowledge object
      */
-    uploadDocument(knowledgeName, documentID, document) {
+    async uploadDocument(knowledgeName, documentID, document) {
+        if (!this.userId) {
+            this.userId = await this.getIDFromKey();
+        }
         const config = {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -225,8 +233,8 @@ class CortexAPI {
             method: 'POST',
             data: document,
         };
-        const endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/knowledge/' + knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     /**
      * delete a document from a knowledge
@@ -235,7 +243,10 @@ class CortexAPI {
      * @param documentID name of document to be deleted
      * @returns Promise of document object
      */
-    deleteDocument(knowledgeName, documentID) {
+    async deleteDocument(knowledgeName, documentID) {
+        if (!this.userId) {
+            this.userId = await this.getIDFromKey();
+        }
         const config = {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -243,8 +254,8 @@ class CortexAPI {
             },
             method: 'DELETE',
         };
-        const endpoint = '/knowledge/' + knowledgeName + '/d/' + documentID;
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/knowledge/' + knowledgeName + '/d/' + documentID;
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     /**
      * runCallable runs a callable with the given data
@@ -253,7 +264,10 @@ class CortexAPI {
      * @param data data to be passed to callable
      * @returns Promise of run object
      */
-    runCallable(callableID, data) {
+    async runCallable(callableID, data) {
+        if (!this.userId) {
+            this.userId = await this.getIDFromKey();
+        }
         const config = {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -262,8 +276,8 @@ class CortexAPI {
             method: 'POST',
             data: data,
         };
-        const endpoint = '/a/' + callableID + '/r';
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/a/' + callableID + '/r';
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     /**
      * runCallableWithStream runs a callable with the given data and returns a stream of events
@@ -272,7 +286,10 @@ class CortexAPI {
      * @param data data to be passed to callable
      * @returns Promise of run object
      */
-    runCallableWithStream(callableID, data) {
+    async runCallableWithStream(callableID, data) {
+        if (!this.userId) {
+            this.userId = await this.getIDFromKey();
+        }
         const config = {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
@@ -281,8 +298,8 @@ class CortexAPI {
             method: 'POST',
             data: { ...data, stream: true },
         };
-        const endpoint = '/a/' + callableID + '/r';
-        return createRequestFunction(config, endpoint, this.basePath);
+        const endpoint = '/' + this.userId + '/a/' + callableID + '/r';
+        return createRequestFunction(config, this.basePath + endpoint);
     }
     /**
      * Specifically runs a chat copilot with a callable of the chat template
