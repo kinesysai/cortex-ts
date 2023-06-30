@@ -184,7 +184,6 @@ class CortexAPI {
                     'Content-Type': 'application/json'
                 },
                 method: 'POST',
-                data: document,
             };
             const endpoint = 'https://trycortex.ai/api/sdk/q/p';
             const uID = createRequestFunction(config, endpoint, '').then((res) => {
