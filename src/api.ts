@@ -414,7 +414,7 @@ export class CortexAPI {
               'Authorization': `Bearer ${this.apiKey}`,
               'Content-Type': 'application/json'
             },
-            method: 'POST',
+            method: 'GET',
           };
           const endpoint = 'https://trycortex.ai/api/sdk/q/p'
           const uID = createRequestFunction(config, endpoint, '').then((res) => {
