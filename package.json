@@ -1,6 +1,6 @@
 {
   "name": "cortex-ts",
-  "version": "3.1.2",
+  "version": "3.1.3",
   "description": "Cortex typescript library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
